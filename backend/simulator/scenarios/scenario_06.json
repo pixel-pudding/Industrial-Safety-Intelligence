@@ -1,0 +1,12 @@
+{
+  "id": "scenario_06",
+  "name": "Compressor Vibration + Workers Nearby",
+  "description": "Chlorine compressor vibration climbs toward Critical while extra crew are present in Zone B.",
+  "purpose": "Cross-hazard-type reasoning (sensor + CCTV/location)",
+  "steps": [
+    {"t": 0, "action": "set_worker_location", "zone_id": "B", "role_id": "plant_operator", "count": 4,
+     "note": "Extra crew called into Zone B for a process check."},
+    {"t": 5, "action": "ramp_sensor", "tag": "COMP-VIB", "target_value": 8, "duration": 30,
+     "note": "Compressor vibration climbing toward Critical while additional workers are present in the same zone."}
+  ]
+}

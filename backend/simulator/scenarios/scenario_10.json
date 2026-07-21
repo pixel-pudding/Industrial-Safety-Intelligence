@@ -1,0 +1,25 @@
+{
+  "id": "scenario_10",
+  "name": "Full Compound Cascade (Flagship)",
+  "description": "VOC rising in Zone C + an unrevalidated hot-work permit in Zone D + overdue vapor-recovery maintenance + workers present in Zone D + a silently skipped Zone K inerting cycle — structurally mirrors historical Incident 10.",
+  "purpose": "Flagship scenario — 5 independent sources, no single sensor sees the whole picture",
+  "steps": [
+    {"t": 0, "action": "issue_permit", "permit_type_id": "hot_work", "zone_id": "D",
+     "gas_test_ppm": 0.6, "gas_test_pass": true, "valid_hours": 8,
+     "extra_fields": {"work_description": "Grinding on blending line support bracket, Zone C/D boundary"},
+     "note": "Hot work permit issued clean at shift start."},
+    {"t": 5, "action": "set_worker_location", "zone_id": "D", "role_id": "contractor", "count": 4,
+     "note": "Contractors present in Zone D for the active hot work."},
+    {"t": 6, "action": "set_worker_location", "zone_id": "D", "role_id": "plant_operator", "count": 2,
+     "note": "Operators also present on routine blending-line duties."},
+    {"t": 10, "action": "set_cmms_overdue", "asset_id": "C-EO-TANK", "overdue_days": 41,
+     "open_work_order_status": "open",
+     "note": "Vapor-recovery blower overdue maintenance — pre-existing condition now entering the picture."},
+    {"t": 15, "action": "ramp_sensor", "tag": "VOC-CONC", "target_value": 12, "duration": 40,
+     "note": "VOC-CONC beginning a Warning-range drift as an EO transfer proceeds with degraded vapor recovery."},
+    {"t": 30, "action": "set_sensor", "tag": "N2-PURGE", "zone_id": "K", "value": "skipped",
+     "note": "Zone K inerting cycle silently skipped — unrelated maintenance interrupted the purge, and it was logged complete anyway."},
+    {"t": 55, "action": "ramp_sensor", "tag": "VOC-CONC", "target_value": 28, "duration": 30,
+     "note": "VOC-CONC crosses into Critical — five independent signals now active simultaneously across Zones C, D and K."}
+  ]
+}

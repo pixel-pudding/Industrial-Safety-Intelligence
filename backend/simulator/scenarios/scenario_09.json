@@ -1,0 +1,16 @@
+{
+  "id": "scenario_09",
+  "name": "Shift Changeover Communication Gap",
+  "description": "Blend temperature drifts into Warning during Shift A; the handover to Shift B does not formally escalate it.",
+  "purpose": "Temporal reasoning across shifts",
+  "steps": [
+    {"t": 0, "action": "ramp_sensor", "tag": "BLEND-TEMP", "target_value": 46, "duration": 30,
+     "note": "Blend vessel temperature drifting into Warning during Shift A."},
+    {"t": 35, "action": "shift_log", "shift_name": "Shift A (Morning)", "zone_id": "D", "supervisor": "N. Rao",
+     "handover_notes": "Mentioned verbally, not logged formally.", "flagged_condition": "BLEND-TEMP elevated, trending upward",
+     "escalated": false, "note": "Outgoing shift does not formally escalate the condition."},
+    {"t": 40, "action": "shift_log", "shift_name": "Shift B (Afternoon)", "zone_id": "D", "supervisor": "A. Iyer",
+     "handover_notes": "Incoming shift has no persistent record of the prior trend.", "flagged_condition": null,
+     "escalated": false, "note": "Incoming shift starts with no context on the ongoing drift."}
+  ]
+}

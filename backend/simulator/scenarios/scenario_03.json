@@ -1,0 +1,11 @@
+{
+  "id": "scenario_03",
+  "name": "Overdue Maintenance Alone",
+  "description": "Loading arm coupling inspection pushed overdue; all sensors stay nominal throughout.",
+  "purpose": "Confirms no false alert on CMMS overdue status by itself",
+  "steps": [
+    {"t": 0, "action": "set_cmms_overdue", "asset_id": "G-LOADING-ARM", "overdue_days": 35,
+     "open_work_order_status": "open",
+     "note": "Loading arm coupling inspection now 35 days overdue — sensors remain nominal, this alone must not trigger a compound alert."}
+  ]
+}

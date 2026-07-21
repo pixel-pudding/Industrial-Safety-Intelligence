@@ -1,0 +1,14 @@
+{
+  "id": "scenario_05",
+  "name": "Hot Work Permit Drifts Dangerous",
+  "description": "A hot work permit is approved clean in Zone D; VOC concentration at the Zone C/D boundary then drifts into Warning without the permit being re-checked.",
+  "purpose": "\"Conditions changed post-approval\" gap",
+  "steps": [
+    {"t": 0, "action": "issue_permit", "permit_type_id": "hot_work", "zone_id": "D",
+     "gas_test_ppm": 0.5, "gas_test_pass": true, "valid_hours": 8,
+     "extra_fields": {"work_description": "Grinding on blending line support bracket"},
+     "note": "Hot work permit issued with a clean gas test."},
+    {"t": 10, "action": "ramp_sensor", "tag": "VOC-CONC", "target_value": 14, "duration": 30,
+     "note": "VOC-CONC drifting into Warning after the permit was approved — the permit's paper status hasn't changed."}
+  ]
+}

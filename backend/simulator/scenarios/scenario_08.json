@@ -1,0 +1,14 @@
+{
+  "id": "scenario_08",
+  "name": "Skipped N2 Purge + Confined Space Request",
+  "description": "A nitrogen inerting cycle is logged complete without the full duration elapsing; a confined space entry is then requested against it.",
+  "purpose": "Proactive permit blocking",
+  "steps": [
+    {"t": 0, "action": "set_sensor", "tag": "N2-PURGE", "zone_id": "K", "value": "skipped",
+     "note": "Nitrogen purge cycle logged complete without the full duration elapsing."},
+    {"t": 10, "action": "issue_permit", "permit_type_id": "confined_space_entry", "zone_id": "K",
+     "gas_test_ppm": 0, "gas_test_pass": true, "valid_hours": 4,
+     "extra_fields": {"entrant_ids": ["EMP-2231", "EMP-2255"], "standby_attendant": "S. Kulkarni", "n2_purge_confirmed": false},
+     "note": "Confined space entry requested without a confirmed purge — should be blocked, not just flagged."}
+  ]
+}

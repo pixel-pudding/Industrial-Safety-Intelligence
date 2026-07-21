@@ -1,0 +1,14 @@
+{
+  "id": "scenario_07",
+  "name": "Cooling Tower Degradation Cascades to Zones A & B",
+  "description": "A single Zone F cooling tower fault simultaneously degrades Zone A reactor cooling and Zone B compressor cooling.",
+  "purpose": "Clearest \"no single sensor sees this\" case",
+  "steps": [
+    {"t": 0, "action": "ramp_sensor", "tag": "CT-OUTTEMP", "target_value": 40, "duration": 40,
+     "note": "Zone F cooling tower outlet temperature climbing toward Critical."},
+    {"t": 10, "action": "ramp_sensor", "tag": "COOL-FLOW", "target_value": 25, "duration": 35,
+     "note": "Zone A reactor cooling flow degrading from the same Zone F fault."},
+    {"t": 15, "action": "ramp_sensor", "tag": "COMP-VIB", "target_value": 5, "duration": 35,
+     "note": "Zone B compressor vibration rising from reduced cooling water — same root cause as Zone A's degradation, invisible without cross-zone correlation."}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "scenario_01",
+  "name": "Single Sensor Breach",
+  "description": "RX-TEMP ramps into Warning. No other signal moves.",
+  "purpose": "Baseline alerting",
+  "steps": [
+    {"t": 0, "action": "ramp_sensor", "tag": "RX-TEMP", "target_value": 268, "duration": 30,
+     "note": "Reactor temperature drifting into Warning — isolated single-sensor event."}
+  ]
+}

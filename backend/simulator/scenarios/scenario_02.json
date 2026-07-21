@@ -1,0 +1,12 @@
+{
+  "id": "scenario_02",
+  "name": "Single Breach, Quick Resolution",
+  "description": "RX-PRESS briefly enters Warning then self-resolves.",
+  "purpose": "Avoids over-alarming on transients",
+  "steps": [
+    {"t": 0, "action": "ramp_sensor", "tag": "RX-PRESS", "target_value": 13, "duration": 15,
+     "note": "Reactor pressure ticks into Warning."},
+    {"t": 20, "action": "ramp_sensor", "tag": "RX-PRESS", "target_value": 10, "duration": 15,
+     "note": "Pressure resolves back to Normal without intervention."}
+  ]
+}

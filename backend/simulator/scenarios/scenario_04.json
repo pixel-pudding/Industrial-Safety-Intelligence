@@ -1,0 +1,13 @@
+{
+  "id": "scenario_04",
+  "name": "Overdue Maintenance + Warning Reading",
+  "description": "Zone C tank pressure rises into Warning while the tank's vapor-recovery maintenance is already 41 days overdue.",
+  "purpose": "First compound signal",
+  "steps": [
+    {"t": 0, "action": "set_cmms_overdue", "asset_id": "C-EO-TANK", "overdue_days": 41,
+     "open_work_order_status": "open",
+     "note": "Pre-existing overdue vapor-recovery maintenance on the EO storage tank."},
+    {"t": 2, "action": "ramp_sensor", "tag": "TK-PRESS", "target_value": 3.8, "duration": 30,
+     "note": "Tank pressure climbing into Warning — now combining with the overdue maintenance flag on the same asset."}
+  ]
+}
