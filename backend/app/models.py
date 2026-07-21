@@ -246,6 +246,28 @@ class EmergencyResponse(Base):
     status: Mapped[str] = mapped_column(String(16), default="dispatched")  # dispatched | acknowledged | resolved
 
 
+class ComplianceAudit(Base):
+    """
+    Quality & Compliance Audit Agent output. Not in the Part II table list —
+    added because a "Compliance gap report vs. OISD/Factory Act" (Part II)
+    is a generated artifact worth keeping a history of, same reasoning as
+    EmergencyResponse. Deliberately has NO foreign key pointing INTO it from
+    any other table — this agent is the lowest-priority, most cuttable of
+    the six (Part II: "lowest priority; build only after 1-5 are demo-ready"),
+    and nothing else in the schema or the agent layer depends on this table
+    existing. See agents/compliance_audit.py's module docstring.
+    """
+
+    __tablename__ = "compliance_audits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_at: Mapped[dt.datetime] = mapped_column(DateTime, default=dt.datetime.utcnow)
+    triggered_by: Mapped[str] = mapped_column(String(16))  # manual | scheduled | anomaly
+    gaps: Mapped[list] = mapped_column(JSON, default=list)
+    gap_count: Mapped[int] = mapped_column(Integer, default=0)
+    summary: Mapped[str] = mapped_column(Text)
+
+
 class HistoricalIncident(Base):
     """
     Structured fields (Step 9). Full narrative + root cause / lessons learned

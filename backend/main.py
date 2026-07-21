@@ -11,8 +11,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from agents import permit_intelligence
+from agents import compliance_audit, permit_intelligence
 from app.db import SessionLocal
+from app.models import ComplianceAudit as ComplianceAuditModel
 from app.models import EmergencyResponse as EmergencyResponseModel
 from app.models import HistoricalIncident, Permit
 from app.models import RiskEvent as RiskEventModel
@@ -159,6 +160,42 @@ def heatmap():
     session = SessionLocal()
     try:
         return engine.current_heatmap(session).model_dump(mode="json")
+    finally:
+        session.close()
+
+
+@app.post("/api/compliance-audit/run")
+def run_compliance_audit():
+    """Quality & Compliance Audit Agent — scheduled/anomaly-triggered per Part
+    II, NOT part of the tick loop. Manual trigger here stands in for the
+    "daily" schedule; nothing else in the system calls into this agent."""
+    session = SessionLocal()
+    try:
+        now = dt.datetime.utcnow()
+        report = compliance_audit.run_audit(session, now, triggered_by="manual")
+        session.add(ComplianceAuditModel(
+            run_at=report.run_at, triggered_by=report.triggered_by,
+            gaps=[g.model_dump(mode="json") for g in report.gaps],
+            gap_count=report.gap_count, summary=report.summary,
+        ))
+        session.commit()
+        return report.model_dump(mode="json")
+    finally:
+        session.close()
+
+
+@app.get("/api/compliance-audit")
+def list_compliance_audits(limit: int = 10):
+    session = SessionLocal()
+    try:
+        rows = session.query(ComplianceAuditModel).order_by(ComplianceAuditModel.id.desc()).limit(limit).all()
+        return [
+            {
+                "id": r.id, "run_at": r.run_at.isoformat(), "triggered_by": r.triggered_by,
+                "gap_count": r.gap_count, "summary": r.summary, "gaps": r.gaps,
+            }
+            for r in rows
+        ]
     finally:
         session.close()
 

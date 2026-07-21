@@ -64,6 +64,8 @@ class MatchedRegulation(BaseModel):
     clause_topic: str
     citation: str  # "<standard> — <clause_topic>"
     excerpt: str
+    distance: float
+    confidence_band: ConfidenceBand
 
 
 class IncidentPatternResult(BaseModel):
@@ -142,6 +144,26 @@ class ZoneHeatmapEntry(BaseModel):
 class GeospatialHeatmap(BaseModel):
     timestamp: dt.datetime
     zones: list[ZoneHeatmapEntry]
+
+
+class ComplianceGap(BaseModel):
+    category: Literal["maintenance_overdue", "permit_expired_not_closed"]
+    zone_id: str
+    source: str  # asset id or permit id
+    description: str
+    regulatory_match: MatchedRegulation | None = None  # None/low-confidence is reported honestly, not hidden
+
+
+class ComplianceAuditReport(BaseModel):
+    """Quality & Compliance Audit Agent output — Part II: 'Compliance gap
+    report vs. OISD/Factory Act', triggered by schedule + CMMS/permit anomaly,
+    NOT continuously. See agents/compliance_audit.py."""
+
+    run_at: dt.datetime
+    triggered_by: Literal["manual", "scheduled", "anomaly"]
+    gaps: list[ComplianceGap] = Field(default_factory=list)
+    gap_count: int = 0
+    summary: str
 
 
 class RiskEvent(BaseModel):

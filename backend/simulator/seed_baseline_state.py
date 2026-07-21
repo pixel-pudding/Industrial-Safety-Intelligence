@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.db import SessionLocal, engine
 from app.models import Base, CctvEvent, MaintenanceRecord, Permit, ShiftLog, WorkerLocation
+from app.models import ComplianceAudit as ComplianceAuditModel
 from app.models import EmergencyResponse as EmergencyResponseModel
 from app.models import RiskEvent as RiskEventModel
 from app.models import SensorReading
@@ -102,6 +103,12 @@ def reset_instance_state(session) -> None:
     # foreign_keys=ON in app/db.py), so this wouldn't error either way, but the
     # ordering keeps intent clear.
     session.query(EmergencyResponseModel).delete()
+    # ComplianceAudit has no FK from/to anything (deliberately — see its model
+    # docstring), but it's still scenario-run history and belongs in the same
+    # "clean slate every take" reset as everything else. Cleared here on
+    # purpose, not by omission — this exact class of bug (new stateful table,
+    # forgotten in reset) has bitten twice already in this build.
+    session.query(ComplianceAuditModel).delete()
     session.query(Permit).delete()
     session.query(CctvEvent).delete()
     session.query(ShiftLog).delete()

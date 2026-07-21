@@ -130,8 +130,16 @@ def _lookup_incidents(zone_id: str, signals: list[ContributingSignal], n_results
     ]
 
 
-def _lookup_regulatory(zone_id: str, signals: list[ContributingSignal], n_results: int = 2) -> list[MatchedRegulation]:
-    query_text = _build_query_text(zone_id, signals)
+def lookup_regulatory_by_text(query_text: str, n_results: int = 2) -> list[MatchedRegulation]:
+    """
+    Public entry point for the regulatory collection, independent of a
+    ContributingSignal-shaped query. Extracted so agents/compliance_audit.py
+    can query "overdue preventive maintenance" or "permit validity expired"
+    directly, using the exact same Chroma collection and MatchedRegulation
+    shape (confidence band included) — rather than opening a second
+    connection to the regulatory collection with its own query logic, which
+    is the kind of drift the shared-module discipline exists to prevent.
+    """
     collection = _get_client().get_collection("regulatory")
     result = collection.query(query_texts=[query_text], n_results=n_results)
 
@@ -139,9 +147,16 @@ def _lookup_regulatory(zone_id: str, signals: list[ContributingSignal], n_result
         MatchedRegulation(
             doc_id=doc_id, standard=meta["standard"], clause_topic=meta["clause_topic"],
             citation=f"{meta['standard']} — {meta['clause_topic']}", excerpt=_excerpt(doc),
+            distance=round(dist, 4), confidence_band=confidence_band(dist),
         )
-        for doc_id, meta, doc in zip(result["ids"][0], result["metadatas"][0], result["documents"][0])
+        for doc_id, dist, meta, doc in zip(
+            result["ids"][0], result["distances"][0], result["metadatas"][0], result["documents"][0]
+        )
     ]
+
+
+def _lookup_regulatory(zone_id: str, signals: list[ContributingSignal], n_results: int = 2) -> list[MatchedRegulation]:
+    return lookup_regulatory_by_text(_build_query_text(zone_id, signals), n_results)
 
 
 def analyze(zone_id: str, signals: list[ContributingSignal]) -> IncidentPatternResult:
