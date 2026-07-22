@@ -164,6 +164,30 @@ export interface ReportsSummary {
   elevated_zones: { zone_id: string; zone_name: string; risk_tier: Tier; risk_score: number }[];
 }
 
+export interface AnalyticsSummary {
+  total_risk_events_analyzed: number;
+  signal_category_frequency: Record<string, number>;
+  agent_trigger_frequency: Record<string, number>;
+  zone_frequency: Record<string, number>;
+  top_zones: { zone_id: string; count: number }[];
+  compliance_audits_run: number;
+  compliance_gap_category_frequency: Record<string, number>;
+}
+
+export interface SystemStatus {
+  llm_provider: string;
+  llm_model: string;
+  llm_api_key_configured: boolean;
+  tick_interval_seconds: number;
+  zone_count: number;
+  scenario_count: number;
+  historical_incident_count: number;
+  sim_time: number;
+  scenario_running: boolean;
+  active_scenario_id: string | null;
+  connected_ws_clients: number;
+}
+
 export interface HistoricalIncident {
   incident_number: number;
   title: string;
@@ -231,6 +255,8 @@ export const runComplianceAudit = () => apiPost<ComplianceAuditReport>("/api/com
 export const fetchComplianceAudits = (limit = 10) => apiGet<ComplianceAuditReport[]>(`/api/compliance-audit?limit=${limit}`);
 export const fetchIncidents = () => apiGet<HistoricalIncident[]>("/api/incidents");
 export const fetchReportsSummary = () => apiGet<ReportsSummary>("/api/reports/summary");
+export const fetchAnalyticsSummary = () => apiGet<AnalyticsSummary>("/api/analytics/summary");
+export const fetchSystemStatus = () => apiGet<SystemStatus>("/api/system/status");
 export const askCopilot = (message: string, zoneId: string | null) =>
   apiPost<{ reply: string }>("/api/copilot/chat", { message, zone_id: zoneId });
 

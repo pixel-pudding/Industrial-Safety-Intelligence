@@ -363,7 +363,7 @@ def system_status():
             "sim_time": engine.sim_time,
             "scenario_running": engine.scenario_running,
             "active_scenario_id": engine.active_scenario_id,
-            "connected_ws_clients": len(manager.active_connections),
+            "connected_ws_clients": len(manager.active),
         }
     finally:
         session.close()

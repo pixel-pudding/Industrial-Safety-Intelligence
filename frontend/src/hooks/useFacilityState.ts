@@ -26,6 +26,8 @@ export function useFacilityState() {
   const [complianceAudits, setComplianceAudits] = useState<api.ComplianceAuditReport[]>([]);
   const [incidents, setIncidents] = useState<api.HistoricalIncident[]>([]);
   const [reportsSummary, setReportsSummary] = useState<api.ReportsSummary | null>(null);
+  const [analyticsSummary, setAnalyticsSummary] = useState<api.AnalyticsSummary | null>(null);
+  const [systemStatus, setSystemStatus] = useState<api.SystemStatus | null>(null);
   const [connected, setConnected] = useState(false);
   const [scenarioRunning, setScenarioRunning] = useState(false);
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
@@ -41,6 +43,8 @@ export function useFacilityState() {
     api.fetchComplianceAudits().then(setComplianceAudits).catch(() => {});
     api.fetchIncidents().then(setIncidents).catch(() => {});
     api.fetchReportsSummary().then(setReportsSummary).catch(() => {});
+    api.fetchAnalyticsSummary().then(setAnalyticsSummary).catch(() => {});
+    api.fetchSystemStatus().then(setSystemStatus).catch(() => {});
 
     disconnectRef.current = api.connectTickStream({
       onOpen: () => setConnected(true),
@@ -65,6 +69,7 @@ export function useFacilityState() {
             return next;
           });
           api.fetchReportsSummary().then(setReportsSummary).catch(() => {});
+          api.fetchAnalyticsSummary().then(setAnalyticsSummary).catch(() => {});
         }
 
         if (payload.emergency_responses?.length) {
@@ -95,10 +100,15 @@ export function useFacilityState() {
     setLatestEventByZone({});
     setEmergencyResponses([]);
     await api.resetSimulation();
-    const [hm, pf, rs] = await Promise.all([api.fetchHeatmap(), api.fetchPermitFlags(), api.fetchReportsSummary()]);
+    const [hm, pf, rs, as_, ss] = await Promise.all([
+      api.fetchHeatmap(), api.fetchPermitFlags(), api.fetchReportsSummary(),
+      api.fetchAnalyticsSummary(), api.fetchSystemStatus(),
+    ]);
     setHeatmap(hm);
     setPermitFlags(pf);
     setReportsSummary(rs);
+    setAnalyticsSummary(as_);
+    setSystemStatus(ss);
   }, []);
 
   const triggerComplianceAudit = useCallback(async () => {
@@ -134,7 +144,8 @@ export function useFacilityState() {
 
   return {
     zones, scenarios, heatmap, readings, riskEvents, latestEventByZone, permitFlags,
-    emergencyResponses, complianceAudits, incidents, reportsSummary, connected, scenarioRunning, activeScenarioId, simTime,
+    emergencyResponses, complianceAudits, incidents, reportsSummary, analyticsSummary, systemStatus,
+    connected, scenarioRunning, activeScenarioId, simTime,
     worstActiveEvent, plantWorstTier,
     triggerScenario, reset, triggerComplianceAudit, sendCopilotMessage,
   };

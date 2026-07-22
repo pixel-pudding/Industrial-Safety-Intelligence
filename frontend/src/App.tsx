@@ -904,6 +904,26 @@ function ZonePicker({ zones, selectedZoneId, onSelectZone }: { zones: LiveZone[]
   )
 }
 
+// Simple horizontal frequency bars for the Analytics tab — width scaled to
+// the largest count in the list, so every list (5 zones or 8 signal
+// categories) reads proportionally regardless of its own max value.
+function BarList({ entries, color }: { entries: { label: string; count: number }[]; color: string }) {
+  const max = Math.max(...entries.map((e) => e.count), 1)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {entries.map((e) => (
+        <div key={e.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: C.textMid, width: 160, flexShrink: 0, textTransform: 'capitalize' }}>{e.label}</span>
+          <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+            <div style={{ width: `${(e.count / max) * 100}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.3s ease' }} />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.textDark, width: 20, textAlign: 'right', flexShrink: 0 }}>{e.count}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Compact horizontal strip of real accumulated risk events — same data as
 // the Overview tab's Incident Timeline, reused here so the AI Intelligence
 // tab has something concrete to show even when the selected zone (or no
@@ -1849,13 +1869,102 @@ function Dashboard({ onExit }: { onExit: () => void }) {
         </div>
       )}
 
-      {(activeTab === 'Analytics' || activeTab === 'Settings') && (
+      {activeTab === 'Analytics' && (
         <div style={{ padding: '16px 24px 32px', animation: 'slide-in 0.25s ease' }}>
           <div style={{
             background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
-            border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 480, textAlign: 'center',
+            border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 800,
           }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: C.textMid }}>No backend endpoint exists for {activeTab} yet.</p>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.amber, marginBottom: 2 }}>PATTERN ANALYSIS</p>
+            <h3 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: C.textDark, marginBottom: 16 }}>Session Analytics</h3>
+            {!facility.analyticsSummary ? (
+              <p style={{ fontSize: 12, color: C.textMuted }}>Loading analytics from the backend…</p>
+            ) : facility.analyticsSummary.total_risk_events_analyzed === 0 ? (
+              <p style={{ fontSize: 12, color: C.textMuted }}>No risk events recorded yet this session — run a scenario to populate pattern analysis. (Compliance audit gap categories, if any have been run, still show below.)</p>
+            ) : null}
+
+            {facility.analyticsSummary && (
+              <>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+                  {[
+                    { label: 'Risk Events Analyzed', value: facility.analyticsSummary.total_risk_events_analyzed },
+                    { label: 'Compliance Audits Run', value: facility.analyticsSummary.compliance_audits_run },
+                    { label: 'Zones With Activity', value: Object.keys(facility.analyticsSummary.zone_frequency).length },
+                  ].map((s) => (
+                    <div key={s.label} style={{ padding: '10px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.06)', minWidth: 130, textAlign: 'center' }}>
+                      <p style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, marginBottom: 3 }}>{s.label}</p>
+                      <p style={{ fontSize: 20, fontWeight: 900, color: C.textDark }}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {facility.analyticsSummary.top_zones.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: C.textMuted, marginBottom: 8 }}>MOST FREQUENTLY TRIGGERED ZONES</p>
+                    <BarList entries={facility.analyticsSummary.top_zones.map((z) => ({ label: `Zone ${z.zone_id}`, count: z.count }))} color={C.amber} />
+                  </div>
+                )}
+
+                {Object.keys(facility.analyticsSummary.signal_category_frequency).length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: C.textMuted, marginBottom: 8 }}>CONTRIBUTING SIGNAL CATEGORIES</p>
+                    <BarList entries={Object.entries(facility.analyticsSummary.signal_category_frequency).map(([label, count]) => ({ label: label.replace(/_/g, ' '), count }))} color="#2563eb" />
+                  </div>
+                )}
+
+                {Object.keys(facility.analyticsSummary.agent_trigger_frequency).length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: C.textMuted, marginBottom: 8 }}>AGENT TRIGGER FREQUENCY</p>
+                    <BarList entries={Object.entries(facility.analyticsSummary.agent_trigger_frequency).map(([label, count]) => ({ label: label.replace(/_/g, ' '), count }))} color="#15803d" />
+                  </div>
+                )}
+
+                {Object.keys(facility.analyticsSummary.compliance_gap_category_frequency).length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: C.textMuted, marginBottom: 8 }}>COMPLIANCE GAP CATEGORIES</p>
+                    <BarList entries={Object.entries(facility.analyticsSummary.compliance_gap_category_frequency).map(([label, count]) => ({ label: label.replace(/_/g, ' '), count }))} color="#ef4444" />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Settings' && (
+        <div style={{ padding: '16px 24px 32px', animation: 'slide-in 0.25s ease' }}>
+          <div style={{
+            background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
+            border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 560,
+          }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.amber, marginBottom: 2 }}>SYSTEM STATUS</p>
+            <h3 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: C.textDark, marginBottom: 4 }}>Configuration & Diagnostics</h3>
+            <p style={{ fontSize: 11, color: C.textMuted, marginBottom: 18 }}>Read-only — this platform has no user accounts or preferences to configure. This is live backend state, not toggles.</p>
+            {!facility.systemStatus ? (
+              <p style={{ fontSize: 12, color: C.textMuted }}>Loading system status…</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { label: 'LLM Provider', value: `${facility.systemStatus.llm_provider} (${facility.systemStatus.llm_model})` },
+                  {
+                    label: 'LLM API Key', value: facility.systemStatus.llm_api_key_configured ? 'Configured' : 'Not configured — falls back to rule-based reasoning',
+                    color: facility.systemStatus.llm_api_key_configured ? '#15803d' : '#c2410c',
+                  },
+                  { label: 'Tick Interval', value: `${facility.systemStatus.tick_interval_seconds}s` },
+                  { label: 'Zones Modeled', value: String(facility.systemStatus.zone_count) },
+                  { label: 'Scripted Scenarios', value: String(facility.systemStatus.scenario_count) },
+                  { label: 'Historical Incidents Indexed', value: String(facility.systemStatus.historical_incident_count) },
+                  { label: 'Sim Time', value: `${Math.round(facility.systemStatus.sim_time)}s` },
+                  { label: 'Active Scenario', value: facility.systemStatus.active_scenario_id ?? (facility.systemStatus.scenario_running ? 'Running' : 'None') },
+                  { label: 'Connected WS Clients', value: String(facility.systemStatus.connected_ws_clients) },
+                ].map((row) => (
+                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                    <span style={{ fontSize: 12, color: C.textMid, fontWeight: 600 }}>{row.label}</span>
+                    <span style={{ fontSize: 12, color: row.color ?? C.textDark, fontWeight: 700 }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
