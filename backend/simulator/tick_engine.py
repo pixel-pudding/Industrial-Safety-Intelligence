@@ -5,10 +5,10 @@ overrides layered on top when a demo scenario is running.
 
 Rate-limit discipline lives here, not just in the agent layer: rule_engine's
 cheap scoring runs for every zone on every tick, but the expensive path
-(agents.compound_risk_engine.evaluate_zone — structural RAG filter + Gemini)
+(agents.compound_risk_engine.evaluate_zone — structural RAG filter + LLM (Groq))
 is only invoked when a zone's tier actually changes from the previous tick,
 never just because it's still sitting in Warning/Critical. A zone parked at
-Warning for two straight minutes must not re-trigger Gemini every 2 seconds
+Warning for two straight minutes must not re-trigger the LLM every 2 seconds
 — that would blow through the free-tier quota for no new information.
 """
 
@@ -242,7 +242,7 @@ class TickEngine:
 
                 if tier != prev:
                     if tier == "normal":
-                        # Recovery — no RAG/Gemini needed, there's no elevated condition to explain.
+                        # Recovery — no RAG/LLM needed, there's no elevated condition to explain.
                         risk_event = RiskEvent(
                             zone=zone_id, timestamp=now, risk_score=score, tier=tier,
                             contributing_signals=signals,
@@ -287,7 +287,7 @@ class TickEngine:
 
             # Digital Permit Intelligence — continuous re-check every tick, per
             # Part II's trigger ("permit issuance + continuous re-check"). Cheap
-            # (no LLM), so unlike the Detection Engine's RAG/Gemini step this can
+            # (no LLM), so unlike the Detection Engine's RAG/LLM step this can
             # safely run unconditionally rather than only on a transition.
             permit_flags = permit_intelligence.evaluate_active_permits(session, all_zone_tag_tiers, now)
 

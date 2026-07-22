@@ -10,8 +10,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-from agents import compliance_audit, permit_intelligence
+from agents import compliance_audit, copilot_agent, permit_intelligence
 from app.db import SessionLocal
 from app.models import ComplianceAudit as ComplianceAuditModel
 from app.models import EmergencyResponse as EmergencyResponseModel
@@ -200,6 +201,20 @@ def list_compliance_audits(limit: int = 10):
         session.close()
 
 
+class CopilotChatRequest(BaseModel):
+    message: str
+    zone_id: str | None = None
+
+
+@app.post("/api/copilot/chat")
+def copilot_chat(req: CopilotChatRequest):
+    session = SessionLocal()
+    try:
+        return {"reply": copilot_agent.chat(session, req.message, req.zone_id)}
+    finally:
+        session.close()
+
+
 @app.get("/api/incidents")
 def list_incidents():
     session = SessionLocal()
@@ -213,6 +228,64 @@ def list_incidents():
             }
             for i in rows
         ]
+    finally:
+        session.close()
+
+
+@app.get("/api/reports/summary")
+def reports_summary():
+    """Aggregated real-data report — total/critical/warning event counts,
+    per-zone breakdown, latest emergency response, latest compliance audit,
+    and current elevated zones. Pure aggregation of existing tables/engine
+    state; nothing here is computed or estimated beyond a straight count."""
+    session = SessionLocal()
+    try:
+        now = dt.datetime.utcnow()
+        events = session.query(RiskEventModel).order_by(RiskEventModel.id.desc()).limit(500).all()
+        tier_counts = {"normal": 0, "warning": 0, "critical": 0}
+        zone_counts: dict[str, int] = {}
+        for e in events:
+            tier_counts[e.tier] = tier_counts.get(e.tier, 0) + 1
+            zone_counts[e.zone_id] = zone_counts.get(e.zone_id, 0) + 1
+
+        latest_er = (
+            session.query(EmergencyResponseModel).order_by(EmergencyResponseModel.id.desc()).first()
+        )
+        latest_audit = (
+            session.query(ComplianceAuditModel).order_by(ComplianceAuditModel.id.desc()).first()
+        )
+        heatmap = engine.current_heatmap(session)
+        elevated_zones = [z for z in heatmap.zones if z.risk_tier != "normal"]
+
+        return {
+            "generated_at": now.isoformat(),
+            "active_scenario_id": engine.active_scenario_id,
+            "scenario_running": engine.scenario_running,
+            "sim_time": engine.sim_time,
+            "total_risk_events": len(events),
+            "events_by_tier": tier_counts,
+            "events_by_zone": zone_counts,
+            "emergency_responses_count": session.query(EmergencyResponseModel).count(),
+            "latest_emergency_response": (
+                {
+                    "id": latest_er.id, "zone": latest_er.zone_id,
+                    "triggered_at": latest_er.triggered_at.isoformat(),
+                    "status": latest_er.status, "preliminary_report": latest_er.preliminary_report,
+                }
+                if latest_er else None
+            ),
+            "latest_compliance_audit": (
+                {
+                    "run_at": latest_audit.run_at.isoformat(), "gap_count": latest_audit.gap_count,
+                    "summary": latest_audit.summary,
+                }
+                if latest_audit else None
+            ),
+            "elevated_zones": [
+                {"zone_id": z.zone_id, "zone_name": z.zone_name, "risk_tier": z.risk_tier, "risk_score": z.risk_score}
+                for z in elevated_zones
+            ],
+        }
     finally:
         session.close()
 

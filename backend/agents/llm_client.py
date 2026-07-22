@@ -1,17 +1,24 @@
 """
-Gemini Flash reasoning step — called ONLY when the rule engine (rule_engine.py)
-has already crossed a zone into Warning/Critical, per Part II's rate-limit
-design consequence (keeps continuous scoring inside the free-tier quota).
+LLM reasoning client — Groq (OpenAI-compatible REST), not Gemini.
 
-Free-tier model as of July 2026: gemini-3.5-flash (10 req/min, 1500/day) —
-configurable via GEMINI_MODEL since Google's Flash lineup moves fast and
-this may need bumping later.
+Deviation from the original build's "Gemini only" constraint, made with
+explicit user confirmation after Gemini's free tier turned out to cap at
+20 requests/day on the available account/project — far too low to make it
+through a single scenario run, let alone a demo. Groq's free tier
+(llama-3.3-70b-versatile: 1,000 req/day, 30 RPM, no card) is a genuine
+no-cost tier consistent with the project's original "no paid APIs"
+requirement, just a different provider. Logged here and in
+backend/README.md so this doesn't need rediscovering. Was named
+gemini_client.py before this switch — renamed rather than left misleading.
 
-Graceful degradation is deliberate, not a shortcut: with no GEMINI_API_KEY
-configured (the default in .env.example) or on any API failure, this falls
-back to a deterministic, signal-driven explanation rather than crashing the
-tick loop or returning nothing — Evidence.llm_backed tells the frontend
-which mode produced a given explanation.
+Uses raw `requests` against Groq's OpenAI-compatible endpoint rather than
+adding a new SDK dependency (`requests` was already a transitive dependency
+via chromadb).
+
+`call_llm()` is the single low-level entry point — both generate_reasoning()
+(the Compound Risk Detection Engine's evidence step) and
+agents/copilot_agent.py's chat() share it, rather than each having their
+own HTTP call + degradation logic.
 """
 
 from __future__ import annotations
@@ -19,9 +26,12 @@ from __future__ import annotations
 import json
 import os
 
+import requests
+
 from app.schemas import ContributingSignal, Evidence, IncidentPatternResult
 
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 INTERVENTION_TEMPLATES = {
     "sensor": "Dispatch operator to verify {source} reading and confirm against redundant instrumentation.",
@@ -33,6 +43,36 @@ INTERVENTION_TEMPLATES = {
     "cctv_event": "Dispatch security/fire response to {source} for direct visual confirmation.",
     "shift_handover_gap": "Require formal written escalation of the carried-over condition before shift close.",
 }
+
+
+def call_llm(prompt: str, json_mode: bool = False, max_tokens: int = 600) -> str | None:
+    """Low-level Groq call. Never raises — returns None on any failure (no
+    key, network error, bad response) so every caller degrades gracefully
+    instead of needing its own try/except around this."""
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
+        return None
+    try:
+        body = {
+            "model": MODEL_NAME,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "max_tokens": max_tokens,
+        }
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
+        resp = requests.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=body,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+    except Exception as exc:  # noqa: BLE001 — must degrade, never propagate
+        print(f"[llm_client] Groq call failed ({exc!r}).")
+        return None
 
 
 def _regulatory_citation(pattern: IncidentPatternResult) -> str | None:
@@ -50,9 +90,7 @@ def _deterministic_fallback(
         reasoning_parts.append(f"- {s.description}")
     if pattern.matched_incidents:
         top = pattern.matched_incidents[0]
-        reasoning_parts.append(
-            f"{pattern.summary} (severity: {top.severity})."
-        )
+        reasoning_parts.append(f"{pattern.summary} (severity: {top.severity}).")
     reasoning = "\n".join(reasoning_parts)
 
     interventions = []
@@ -82,9 +120,7 @@ def _build_prompt(zone_id: str, tier: str, signals: list[ContributingSignal], pa
         f"Incident #{m.incident_number} \"{m.title}\" ({m.severity}, retrieval confidence: {m.confidence_band}):\n{m.excerpt}"
         for m in pattern.matched_incidents
     )
-    regulatory_lines = "\n\n".join(
-        f"{m.citation}:\n{m.excerpt}" for m in pattern.matched_regulations
-    )
+    regulatory_lines = "\n\n".join(f"{m.citation}:\n{m.excerpt}" for m in pattern.matched_regulations)
 
     return f"""You are the reasoning layer of an industrial safety Compound Risk Detection Engine
 for a petrochemical plant. A rule-based scoring layer has already determined Zone {zone_id}
@@ -106,27 +142,15 @@ Respond with strict JSON only, no markdown, matching exactly this shape:
 {{"confidence": <int 0-100>, "reasoning": "<2-4 sentence explanation citing specific signals and the matched incident/regulation>", "recommended_interventions": ["<action 1>", "<action 2>", "..."]}}"""
 
 
-def generate_reasoning(
-    zone_id: str, tier: str, signals: list[ContributingSignal], pattern: IncidentPatternResult,
-) -> Evidence:
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
+def generate_reasoning(zone_id: str, tier: str, signals: list[ContributingSignal], pattern: IncidentPatternResult) -> Evidence:
+    prompt = _build_prompt(zone_id, tier, signals, pattern)
+    raw = call_llm(prompt, json_mode=True, max_tokens=500)
+    if raw is None:
         return _deterministic_fallback(zone_id, tier, signals, pattern)
 
     try:
-        from google import genai
-
-        client = genai.Client(api_key=api_key)
-        prompt = _build_prompt(zone_id, tier, signals, pattern)
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt,
-            config={"response_mime_type": "application/json"},
-        )
-        parsed = json.loads(response.text)
-
+        parsed = json.loads(raw)
         top_incident = pattern.matched_incidents[0] if pattern.matched_incidents else None
-
         return Evidence(
             confidence=int(parsed["confidence"]),
             matched_incident_ids=[m.doc_id for m in pattern.matched_incidents],
@@ -138,6 +162,6 @@ def generate_reasoning(
             recommended_interventions=parsed.get("recommended_interventions", []),
             llm_backed=True,
         )
-    except Exception as exc:  # noqa: BLE001 — any failure must degrade, never crash the tick loop
-        print(f"[gemini_client] Gemini call failed ({exc!r}); falling back to deterministic reasoning.")
+    except Exception as exc:  # noqa: BLE001 — malformed LLM output must degrade too
+        print(f"[llm_client] Failed to parse Groq response ({exc!r}); falling back to deterministic reasoning.")
         return _deterministic_fallback(zone_id, tier, signals, pattern)

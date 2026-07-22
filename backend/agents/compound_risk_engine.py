@@ -3,9 +3,9 @@ LangGraph wiring for the Compound Risk Detection Engine — the hub node in
 Part II's orchestration model. Graph shape:
 
     rule_score --(normal)--> END
-    rule_score --(warning/critical)--> rag_lookup --> gemini_reasoning --> END
+    rule_score --(warning/critical)--> rag_lookup --> llm_reasoning --> END
 
-Rule-based scoring always runs (cheap, every tick). RAG + Gemini only run on
+Rule-based scoring always runs (cheap, every tick). RAG + the LLM only run on
 a Warning/Critical crossing — this is both the rate-limit design consequence
 (Part II) and the reason the structural pre-filter in
 incident_pattern_intelligence.py has to be correct: everything downstream of
@@ -29,7 +29,7 @@ from typing import TypedDict
 from langgraph.graph import END, StateGraph
 from sqlalchemy.orm import Session
 
-from agents import gemini_client, incident_pattern_intelligence, rule_engine
+from agents import incident_pattern_intelligence, llm_client, rule_engine
 from app.schemas import ContributingSignal, Evidence, IncidentPatternResult, RiskEvent
 
 
@@ -67,8 +67,8 @@ def _rag_lookup_node(state: GraphState) -> GraphState:
     return state
 
 
-def _gemini_reasoning_node(state: GraphState) -> GraphState:
-    state["evidence"] = gemini_client.generate_reasoning(
+def _llm_reasoning_node(state: GraphState) -> GraphState:
+    state["evidence"] = llm_client.generate_reasoning(
         state["zone_id"], state["tier"], state["signals"], state["pattern_result"],
     )
     return state
@@ -78,12 +78,12 @@ def _build_graph():
     graph = StateGraph(GraphState)
     graph.add_node("rule_score", _rule_score_node)
     graph.add_node("rag_lookup", _rag_lookup_node)
-    graph.add_node("gemini_reasoning", _gemini_reasoning_node)
+    graph.add_node("llm_reasoning", _llm_reasoning_node)
 
     graph.set_entry_point("rule_score")
     graph.add_conditional_edges("rule_score", _route_on_tier, {"rag_lookup": "rag_lookup", "end": END})
-    graph.add_edge("rag_lookup", "gemini_reasoning")
-    graph.add_edge("gemini_reasoning", END)
+    graph.add_edge("rag_lookup", "llm_reasoning")
+    graph.add_edge("llm_reasoning", END)
     return graph.compile()
 
 

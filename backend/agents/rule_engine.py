@@ -12,7 +12,7 @@ statement's "compound risk detection accuracy vs. single-sensor baselines"
 evaluation focus actually require.
 
 Cheap and deterministic by design — runs every tick for every zone. The
-Gemini reasoning step (agents/gemini_client.py) is only invoked afterward,
+LLM reasoning step (agents/llm_client.py, Groq) is only invoked afterward,
 and only when this scoring crosses into Warning/Critical, per the
 rate-limit design consequence in Part II.
 """
