@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useFacilityState, type LiveRiskEvent } from './hooks/useFacilityState'
-import type { Tier, ZoneHeatmapEntry, SensorReadingTick, PermitFlag } from './services/api'
+import type { Tier, ZoneHeatmapEntry, SensorReadingTick, PermitFlag, EmergencyResponseResult } from './services/api'
 
 // ── Color tokens ────────────────────────────────────────────────────────────
 // Primary: warm amber/butter yellow replacing generic indigo
@@ -30,7 +30,12 @@ const HERO_IMAGE =
   'https://images.unsplash.com/photo-1652734849437-c5101767f9b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw0fHxpbmR1c3RyaWFsJTIwcGxhbnQlMjB3YXJtJTIwc3Vuc2V0JTIwZ29sZGVuJTIwZm9nJTIwZnV0dXJpc3RpY3xlbnwxfHx8fDE3ODQ3MDU5OTh8MA&ixlib=rb-4.1.0&q=80&w=1080'
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const NAV_LINKS = ['Platform', 'Pricing', 'Contact', 'Blog']
+// Real, functional in-page anchors — not decorative href="#" links to pages
+// that don't exist (no pricing/contact/blog page is part of this build).
+const NAV_LINKS = [
+  { label: 'Why Safe Grid', href: '#why' },
+  { label: 'How It Works', href: '#how-it-works' },
+]
 
 const INDUSTRY_TAGS = ['Chemical Manufacturing', 'Oil & Gas', 'Petrochemicals', 'Mining & Metals', 'Power Generation', 'Pharmaceuticals']
 
@@ -42,16 +47,16 @@ const FEATURES = [
       label: 'AI detected',
       items: ['Cooling tower degrading', 'Pressure variance +12%', 'VOC threshold 87%'],
     },
-    desc: 'Safe Grid correlates 40+ SCADA, IoT, and permit systems simultaneously — catching compound risks 13 minutes before they become emergencies.',
+    desc: 'The Compound Risk Detection Engine scores seven independent evidence categories every two seconds — sensor drift, overdue maintenance, permit conditions, worker presence — and flags the combinations no single reading would catch alone.',
   },
   {
     num: '02',
     title: 'Explains every decision',
     card: {
       label: 'AI reasoning',
-      items: ['Checked 5 independent systems', 'Matched 3 historical incidents', 'Confidence: 94%'],
+      items: ['Checked 5 signal categories', 'Matched incident via RAG retrieval', 'Confidence scored, not asserted'],
     },
-    desc: "Every AI recommendation comes with full reasoning, evidence strength, and historical precedent. Inspectors understand why before they act.",
+    desc: "Every Warning or Critical event triggers a retrieval-augmented reasoning pass — matched historical incidents, cited DGMS/OISD clauses, and a confidence score. Nothing is asserted without a source.",
   },
   {
     num: '03',
@@ -60,24 +65,24 @@ const FEATURES = [
       label: 'Recommended',
       items: ['Evacuate Zone D', 'Suspend work permit', 'Notify fire team'],
     },
-    desc: "Context-aware recommendations ranked by urgency, aligned with DGMS regulations, delivered to the right person at the right time.",
+    desc: "Recommended interventions come from the same reasoning pass that scored the risk — tied to the regulation that justifies them, not a generic checklist.",
   },
   {
     num: '04',
-    title: 'Gets smarter over time',
+    title: 'Grounded in real precedent',
     card: {
-      label: 'Learning',
-      items: ['23 incident patterns indexed', 'DGMS rules updated', 'Plant model refined'],
+      label: 'Knowledge base',
+      items: ['10 documented incident case studies', 'DGMS & OISD clauses indexed', 'ChromaDB retrieval, not guesswork'],
     },
-    desc: 'Every incident, near-miss, and successful intervention feeds the intelligence layer — compounding knowledge across your entire operational history.',
+    desc: 'The reasoning layer is grounded in a corpus of real historical incident narratives and regulatory text — retrieved and cited on every call, never fabricated.',
   },
 ]
 
 const STATS = [
-  { value: '94%', label: 'AI prediction accuracy' },
-  { value: '13 min', label: 'avg. early warning window' },
-  { value: '40+', label: 'systems correlated in real-time' },
-  { value: '0', label: 'critical incidents at pilot sites' },
+  { value: '6', label: 'independent AI agents' },
+  { value: '10', label: 'scripted incident scenarios' },
+  { value: '11', label: 'plant zones modeled live' },
+  { value: '2s', label: 'sensor tick interval' },
 ]
 
 const STEPS = [
@@ -88,8 +93,8 @@ const STEPS = [
         <path d="M6 7h8M6 10h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
-    title: 'Connect your plant',
-    desc: 'We integrate with SCADA, DCS, IoT sensors, permit systems, and HR databases in 48 hours. No rip-and-replace.',
+    title: 'Run a real scenario',
+    desc: 'Pick from ten scripted incident scenarios — a skipped nitrogen purge, a compound cascade across three zones — replayed against a live simulated plant, not a static slideshow.',
   },
   {
     icon: (
@@ -98,8 +103,8 @@ const STEPS = [
         <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
-    title: 'AI learns your plant',
-    desc: 'Safe Grid builds a digital twin of your facility, indexes historical incidents, and calibrates to your specific risk profile.',
+    title: 'Watch the AI reason live',
+    desc: 'The digital twin updates every two seconds. The moment a zone crosses into Warning or Critical, the reasoning engine runs — retrieving precedent, checking regulation, scoring confidence.',
   },
   {
     icon: (
@@ -107,8 +112,8 @@ const STEPS = [
         <path d="M3 10l4 4 10-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    title: 'Stay ahead of risk',
-    desc: 'Your team gets early warnings, ranked recommendations, and full AI reasoning — before the crisis, not during it.',
+    title: 'Get evidence, not just an alert',
+    desc: 'Every recommendation shows its work: which signals triggered it, which incident it matches, which regulation applies — so you can verify it before acting on it.',
   },
 ]
 
@@ -214,13 +219,6 @@ interface Message {
   role: 'ai' | 'user'
   text: string
 }
-
-const COPILOT_SUGGESTIONS = [
-  'Why is Zone D high risk?',
-  'Explain AI decision',
-  'Show similar incidents',
-  "Summarize today's events",
-]
 
 const DASH_NAV = ['Overview', 'Digital Twin', 'AI Intelligence', 'Copilot', 'Replay', 'More']
 const MORE_ITEMS = ['Historical Incidents', 'Compliance', 'Reports', 'Analytics', 'Settings']
@@ -352,14 +350,14 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
 
         <nav style={{ display: 'flex', gap: 2 }}>
           {NAV_LINKS.map((l) => (
-            <a key={l} href="#" style={{
+            <a key={l.label} href={l.href} style={{
               fontSize: 14, fontWeight: 500,
               color: scrolled ? C.textMid : 'rgba(255,255,255,0.82)',
               textDecoration: 'none', padding: '6px 14px', borderRadius: 8, transition: 'color 0.2s, background 0.2s',
             }}
               onMouseEnter={(e) => { e.currentTarget.style.background = scrolled ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = scrolled ? C.textDark : 'white' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = scrolled ? C.textMid : 'rgba(255,255,255,0.82)' }}
-            >{l}</a>
+            >{l.label}</a>
           ))}
         </nav>
 
@@ -371,7 +369,8 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
         }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245,158,11,0.5)' }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 2px 12px rgba(245,158,11,0.4)' }}
-        >Get started free</button>
+          onClick={onLaunch}
+        >Launch Command Center</button>
       </header>
 
       {/* ── HERO ── */}
@@ -382,7 +381,7 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: 820, padding: '0 24px', animation: 'slide-in 0.9s ease both' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 24, padding: '6px 14px', marginBottom: 28 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>TRUSTED BY 200+ INDUSTRIAL SITES</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>ET AI HACKATHON 2026 — PROBLEM STATEMENT #1</span>
           </div>
 
           <h1 style={{ fontSize: 'clamp(44px, 7vw, 78px)', fontWeight: 900, lineHeight: 1.06, letterSpacing: '-0.04em', color: 'white', marginBottom: 20 }}>
@@ -391,7 +390,7 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
           </h1>
 
           <p style={{ fontSize: 'clamp(16px, 2vw, 19px)', lineHeight: 1.6, color: 'rgba(255,255,255,0.72)', maxWidth: 540, margin: '0 auto 36px', fontWeight: 400 }}>
-            Safe Grid correlates 40+ plant systems in real time — detecting compound risks before they become incidents, and explaining every decision in plain language.
+            Six purpose-built AI agents reasoning over a live simulated petrochemical plant — correlating sensor drift, permit conditions, maintenance backlogs, and worker location to catch compound risks a single reading would miss, then explaining every call with the regulation and precedent behind it.
           </p>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -405,14 +404,15 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
               onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 32px rgba(245,158,11,0.5)' }}
               onClick={onLaunch}
             >Launch AI Command Center →</button>
-            <button style={{
-              background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)',
+            <a href="#how-it-works" style={{
+              background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', textDecoration: 'none',
               color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12,
               padding: '14px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s',
+              display: 'inline-block',
             }}
               onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.18)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-            >Watch a demo</button>
+            >See how it reasons</a>
           </div>
         </div>
       </section>
@@ -433,7 +433,7 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
       </section>
 
       {/* ── WHY SECTION ── */}
-      <section style={{ padding: 'clamp(60px, 8vw, 96px) clamp(24px, 6vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
+      <section id="why" style={{ padding: 'clamp(60px, 8vw, 96px) clamp(24px, 6vw, 80px)', maxWidth: 1200, margin: '0 auto', scrollMarginTop: 88 }}>
         <div style={{ marginBottom: 56 }}>
           <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', color: C.amber, marginBottom: 14 }}>WHY SAFE GRID</p>
           <h2 style={{ fontSize: 'clamp(30px, 4.5vw, 52px)', fontWeight: 900, letterSpacing: '-0.035em', lineHeight: 1.1, maxWidth: 540 }}>
@@ -481,10 +481,10 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
       </section>
 
       {/* ── HOW IT WORKS + AI PREVIEW (merged, 2-col) ── */}
-      <section style={{ padding: 'clamp(60px, 8vw, 96px) clamp(24px, 6vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
+      <section id="how-it-works" style={{ padding: 'clamp(60px, 8vw, 96px) clamp(24px, 6vw, 80px)', maxWidth: 1200, margin: '0 auto', scrollMarginTop: 88 }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', color: C.amber, marginBottom: 14 }}>HOW IT WORKS</p>
-          <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, letterSpacing: '-0.035em', lineHeight: 1.1 }}>Up and running in 48 hours.</h2>
+          <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, letterSpacing: '-0.035em', lineHeight: 1.1 }}>Three steps, no black box.</h2>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}>
@@ -521,7 +521,7 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
                 Ask why.<br />Get a real answer.
               </h2>
               <p style={{ fontSize: 15, lineHeight: 1.7, color: C.textMid, marginBottom: 24 }}>
-                Every Safe Grid alert includes full reasoning — which sensors triggered, what historical incidents match, which DGMS regulations apply.
+                Every Warning or Critical alert includes full reasoning — which signals triggered it, which historical incident it matches, which DGMS or OISD clause applies.
               </p>
               <button style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -601,11 +601,11 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
       <section style={{ padding: 'clamp(60px, 8vw, 96px) clamp(24px, 6vw, 80px)', textAlign: 'center', background: C.pageBgAlt }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <h2 style={{ fontSize: 'clamp(32px, 5vw, 58px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1.08, marginBottom: 18, color: C.textDark }}>
-            Ready to see inside<br />
-            <span style={{ background: `linear-gradient(135deg, ${C.amber}, ${C.amberLight})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>your plant in real time?</span>
+            Ready to watch it<br />
+            <span style={{ background: `linear-gradient(135deg, ${C.amber}, ${C.amberLight})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>reason through an incident?</span>
           </h2>
           <p style={{ fontSize: 16, color: C.textMid, lineHeight: 1.65, marginBottom: 36 }}>
-            Get a personalized demo of the AI Command Center. We'll show you exactly what Safe Grid would have caught in your last 12 months.
+            Launch the AI Command Center and run any of the ten scripted scenarios yourself — watch the detection engine correlate signals, retrieve precedent, and explain its own call in real time.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button style={{
@@ -618,14 +618,14 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
               onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 32px rgba(245,158,11,0.45)' }}
               onClick={onLaunch}
             >Launch AI Command Center →</button>
-            <button style={{
-              background: 'transparent', color: C.amberDark,
+            <a href="https://github.com/pixel-pudding/Industrial-Safety-Intelligence" target="_blank" rel="noopener noreferrer" style={{
+              background: 'transparent', color: C.amberDark, textDecoration: 'none', display: 'inline-block',
               border: `1.5px solid ${C.amberBorder}`, borderRadius: 12, padding: '15px 30px',
               fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
             }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.amber; e.currentTarget.style.background = C.amberBg }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.amberBorder; e.currentTarget.style.background = 'transparent' }}
-            >Schedule a demo</button>
+            >View source on GitHub</a>
           </div>
         </div>
       </section>
@@ -656,7 +656,12 @@ function LandingPage({ onLaunch }: { onLaunch: () => void }) {
 // DASHBOARD SUB-COMPONENTS
 // ════════════════════════════════════════════════════════════════════════════
 function DigitalTwin({ zones, worstActiveEvent, onZoneSelect }: { zones: LiveZone[]; worstActiveEvent: LiveRiskEvent | null; onZoneSelect: (z: LiveZone | null) => void }) {
-  const [hovered, setHovered] = useState<LiveZone | null>(null)
+  // Store only the id, not the zone object — the object is a snapshot from
+  // whichever render the mouseenter fired in, and would freeze the tooltip
+  // (workers/permits/tags) at that instant instead of tracking live WS ticks.
+  // Looking the id up in the current `zones` prop every render keeps it live.
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const hovered = hoveredId ? zones.find((z) => z.id === hoveredId) ?? null : null
   const [activeLayer, setActiveLayer] = useState('3D View')
   const layers = ['3D View', 'Heatmap', 'Sensor Layer', 'Worker Layer', 'Permit Layer']
 
@@ -722,14 +727,15 @@ function DigitalTwin({ zones, worstActiveEvent, onZoneSelect }: { zones: LiveZon
 
             {zones.map((z) => {
               const sc = STATUS_COLORS[z.status]
-              const isHov = hovered?.id === z.id
+              const isHov = hoveredId === z.id
               const heat = heatColor(z.riskScore)
               const onHeatmap = activeLayer === 'Heatmap'
               const fill = onHeatmap ? heat.bg : isHov ? sc.bg.replace('0.12', '0.25') : sc.bg
               const stroke = onHeatmap ? heat.border : isHov ? sc.dot : sc.border
               return (
                 <g key={z.id} style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => { setHovered(z); onZoneSelect(z) }}
+                  onMouseEnter={() => { setHoveredId(z.id); onZoneSelect(z) }}
+                  onClick={() => { setHoveredId(z.id); onZoneSelect(z) }}
                 >
                   {z.status === 'critical' && (
                     <rect x={z.x - 4} y={z.y - 4} width={z.w + 8} height={z.h + 8} rx="14" fill="rgba(239,68,68,0.1)" filter="url(#glow)">
@@ -740,6 +746,7 @@ function DigitalTwin({ zones, worstActiveEvent, onZoneSelect }: { zones: LiveZon
                     fill={fill}
                     stroke={stroke}
                     strokeWidth={isHov ? 2 : 1}
+                    style={{ transition: 'fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease' }}
                   />
                   <text x={z.x + 8} y={z.y + 16} fontSize="9" fontWeight="700" fill={sc.text} opacity="0.7">Zone {z.id}</text>
                   <text x={z.x + 8} y={z.y + 28} fontSize="10" fontWeight="700" fill={C.textDark}>{z.label}</text>
@@ -802,7 +809,10 @@ function DigitalTwin({ zones, worstActiveEvent, onZoneSelect }: { zones: LiveZon
               border: activeLayer === l ? `1px solid ${C.amber}` : '1px solid rgba(0,0,0,0.08)',
               background: activeLayer === l ? C.amberBg : 'transparent',
               color: activeLayer === l ? C.amberDark : C.textMid, cursor: 'pointer', transition: 'all 0.2s',
-            }}>{l}</button>
+            }}
+              onMouseEnter={(e) => { if (activeLayer !== l) e.currentTarget.style.background = 'rgba(0,0,0,0.04)' }}
+              onMouseLeave={(e) => { if (activeLayer !== l) e.currentTarget.style.background = 'transparent' }}
+            >{l}</button>
           ))}
           {activeLayer === 'Heatmap' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6 }}>
@@ -815,45 +825,54 @@ function DigitalTwin({ zones, worstActiveEvent, onZoneSelect }: { zones: LiveZon
             </div>
           )}
         </div>
-      </div>
 
-      {hovered && (
-        <div style={{
-          background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(20px)', borderRadius: 16,
-          border: `1px solid ${STATUS_COLORS[hovered.status].border}`,
-          padding: '14px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', animation: 'slide-in 0.2s ease',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontWeight: 800, fontSize: 14, color: C.textDark }}>Zone {hovered.id} — {hovered.label}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLORS[hovered.status].bg, color: STATUS_COLORS[hovered.status].text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {hovered.status}
-            </span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px' }}>
-            {[['Workers', hovered.workers], ['Permits', hovered.permits]].map(([k, v]) => (
-              <div key={String(k)}>
-                <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 600 }}>{k}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.textDark, marginLeft: 8 }}>{v}</span>
-              </div>
-            ))}
-          </div>
-          {/* Dynamic per-zone sensor tag list — real tags, not a fixed temp/pressure
-              pair. Zones with no live readings yet (e.g. right after a reset) show none. */}
-          {hovered.tags.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-              {hovered.tags.map((t) => (
-                <div key={t.tag}>
-                  <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 600 }}>{t.tag}</span>
-                  <span style={{
-                    fontSize: 13, fontWeight: 700, marginLeft: 8,
-                    color: t.tier === 'critical' ? STATUS_COLORS.critical.text : t.tier === 'warning' ? STATUS_COLORS.elevated.text : C.textDark,
-                  }}>{t.value}</span>
+        {/* Bug fix: this used to be a flex SIBLING of this card, inside a
+            fixed-height parent — appearing pushed the card's own flex:1
+            box shorter (this card has overflow:hidden), clipping the
+            bottom zone row underneath it. Absolutely positioning it here,
+            scoped to this card (which is position:relative), makes it a
+            true overlay: it floats over the map instead of compressing it,
+            and the card's rendered size never changes when it appears. */}
+        {hovered && (
+          <div style={{
+            position: 'absolute', left: 20, right: 20, bottom: 20, zIndex: 20,
+            background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 16,
+            border: `1px solid ${STATUS_COLORS[hovered.status].border}`,
+            padding: '14px 18px', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', animation: 'slide-in 0.2s ease',
+            maxHeight: 'calc(100% - 40px)', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontWeight: 800, fontSize: 14, color: C.textDark }}>Zone {hovered.id} — {hovered.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLORS[hovered.status].bg, color: STATUS_COLORS[hovered.status].text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {hovered.status}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px' }}>
+              {[['Workers', hovered.workers], ['Permits', hovered.permits]].map(([k, v]) => (
+                <div key={String(k)}>
+                  <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 600 }}>{k}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.textDark, marginLeft: 8 }}>{v}</span>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      )}
+            {/* Dynamic per-zone sensor tag list — real tags, not a fixed temp/pressure
+                pair. Zones with no live readings yet (e.g. right after a reset) show none. */}
+            {hovered.tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                {hovered.tags.map((t) => (
+                  <div key={t.tag}>
+                    <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 600 }}>{t.tag}</span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700, marginLeft: 8,
+                      color: t.tier === 'critical' ? STATUS_COLORS.critical.text : t.tier === 'warning' ? STATUS_COLORS.elevated.text : C.textDark,
+                    }}>{t.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -872,7 +891,10 @@ function ZonePicker({ zones, selectedZoneId, onSelectZone }: { zones: LiveZone[]
             background: isSel ? sc.bg : 'rgba(255,255,255,0.6)',
             color: isSel ? sc.text : C.textMid, cursor: 'pointer', transition: 'all 0.15s',
             display: 'flex', alignItems: 'center', gap: 5,
-          }}>
+          }}
+            onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = 'rgba(0,0,0,0.05)' }}
+            onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.6)' }}
+          >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
             {z.id}
           </button>
@@ -882,7 +904,169 @@ function ZonePicker({ zones, selectedZoneId, onSelectZone }: { zones: LiveZone[]
   )
 }
 
-function AIIntelligence({ selectedZoneId, latestEventByZone, zones, onSelectZone }: { selectedZoneId: string | null; latestEventByZone: Record<string, LiveRiskEvent>; zones: LiveZone[]; onSelectZone: (id: string) => void }) {
+// Compact horizontal strip of real accumulated risk events — same data as
+// the Overview tab's Incident Timeline, reused here so the AI Intelligence
+// tab has something concrete to show even when the selected zone (or no
+// zone) currently has no active event, instead of just empty space below
+// the idle message.
+function RecentEventsStrip({ riskEvents, zoneFilter }: { riskEvents: LiveRiskEvent[]; zoneFilter: string | null }) {
+  const events = (zoneFilter ? riskEvents.filter((e) => e.zone === zoneFilter) : riskEvents).slice(0, 8)
+  if (events.length === 0) return null
+  return (
+    <div>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: C.textMuted, marginBottom: 10 }}>
+        RECENT ACTIVITY{zoneFilter ? ` — ZONE ${zoneFilter}` : ''}
+      </p>
+      <div style={{ display: 'flex', gap: 0, overflowX: 'auto', paddingBottom: 6 }}>
+        {events.map((ev, i) => (
+          <div key={ev.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {i > 0 && <div style={{ width: 20, height: 1, background: C.amberBorder, flexShrink: 0 }} />}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 92, flexShrink: 0 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: ev.tier === 'critical' ? 'rgba(239,68,68,0.12)' : ev.tier === 'warning' ? 'rgba(251,146,60,0.12)' : 'rgba(74,222,128,0.12)',
+                border: `2px solid ${ev.tier === 'critical' ? '#ef4444' : ev.tier === 'warning' ? '#f97316' : '#22c55e'}`,
+                fontSize: 12,
+              }}>{ev.tier === 'critical' ? '🚨' : ev.tier === 'warning' ? '⚠️' : '✓'}</div>
+              <span style={{ fontSize: 9, fontWeight: 600, color: C.textMuted, marginTop: 4 }}>{formatEventTime(ev.timestamp)}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: C.textDark, textAlign: 'center', lineHeight: 1.3, marginTop: 2 }}>
+                {zoneFilter ? (ev.tier === 'normal' ? 'Resolved' : ev.tier) : `Zone ${ev.zone}`}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Fills the previously-empty second column on the AI Intelligence and
+// Copilot tabs with real data that already exists in state but was never
+// rendered anywhere: every past Warning/Critical event's full evidence
+// bundle (confidence, matched incident, regulatory citation, interventions).
+// Not a decorative placeholder — every field here is the same `evidence`
+// object the main panel renders, just kept visible after the event scrolls
+// out of "latest per zone."
+function ReasoningHistory({ riskEvents }: { riskEvents: LiveRiskEvent[] }) {
+  const withEvidence = riskEvents.filter((e) => e.evidence !== null).slice(0, 12)
+  return (
+    <div style={{
+      background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
+      border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)',
+      padding: 20, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflowY: 'auto',
+    }}>
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.amber, marginBottom: 2 }}>SESSION LOG</p>
+        <h3 style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.textDark }}>Reasoning History</h3>
+      </div>
+      {withEvidence.length === 0 ? (
+        <p style={{ fontSize: 12, color: C.textMuted }}>No AI reasoning has run yet this session — this populates the moment any zone crosses into Warning or Critical, and stays here after the event resolves.</p>
+      ) : (
+        withEvidence.map((ev) => {
+          const ev2 = ev.evidence!
+          const tierColor = ev.tier === 'critical' ? '#ef4444' : '#f97316'
+          return (
+            <div key={ev.id} style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.7)', border: `1px solid ${ev.tier === 'critical' ? 'rgba(239,68,68,0.18)' : 'rgba(251,146,60,0.18)'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.textDark }}>Zone {ev.zone} · {ev.tier}</span>
+                <span style={{ fontSize: 10, color: C.textMuted }}>{formatEventTime(ev.timestamp)}</span>
+              </div>
+              <p style={{ fontSize: 20, fontWeight: 900, color: tierColor, lineHeight: 1, marginBottom: 6 }}>{ev2.confidence}%</p>
+              {ev2.matched_incident_summary && (
+                <p style={{ fontSize: 11, color: C.textMid, marginBottom: 3 }}><b>Precedent:</b> {ev2.matched_incident_summary}</p>
+              )}
+              {ev2.regulatory_citation && (
+                <p style={{ fontSize: 10, color: C.textMuted, marginBottom: 3 }}>{ev2.regulatory_citation}</p>
+              )}
+              {ev2.recommended_interventions.length > 0 && (
+                <p style={{ fontSize: 11, color: C.textMid, marginTop: 6 }}>→ {ev2.recommended_interventions[0]}</p>
+              )}
+            </div>
+          )
+        })
+      )}
+    </div>
+  )
+}
+
+// Emergency Response Orchestrator output — captured into state from WS
+// ticks but, before this fix, never rendered anywhere beyond a bare count
+// on the Reports tab. Real evacuation zones, alert recipients, and the
+// preliminary report text, not a summary of a summary.
+function EmergencyResponsePanel({ emergencyResponses }: { emergencyResponses: EmergencyResponseResult[] }) {
+  return (
+    <div style={{
+      background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
+      border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)',
+      padding: 20, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflowY: 'auto',
+    }}>
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.amber, marginBottom: 2 }}>EMERGENCY RESPONSE ORCHESTRATOR</p>
+        <h3 style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.textDark }}>Interventions</h3>
+      </div>
+      {emergencyResponses.length === 0 ? (
+        <p style={{ fontSize: 12, color: C.textMuted }}>No emergency response has been dispatched this session — this only triggers at Critical tier.</p>
+      ) : (
+        emergencyResponses.slice(0, 6).map((er, i) => (
+          <div key={i} style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>Zone {er.zone} — {er.status}</span>
+              <span style={{ fontSize: 10, color: C.textMuted }}>{formatEventTime(er.triggered_at)}</span>
+            </div>
+            <p style={{ fontSize: 11, color: C.textMid, marginBottom: 4 }}><b>Evacuate:</b> {er.evacuation_zones.join(', ') || 'none'}</p>
+            <p style={{ fontSize: 11, color: C.textMid, marginBottom: 4 }}><b>Alerted:</b> {[...new Set(er.alert_recipients.map((r) => r.role))].join(', ')}</p>
+            <p style={{ fontSize: 10, color: C.textMuted, whiteSpace: 'pre-wrap', marginTop: 6 }}>{er.preliminary_report.slice(0, 180)}…</p>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+// Digital Permit Intelligence Agent output — permitFlags was already fetched
+// into state and used to compute a per-zone COUNT for the twin's Permit
+// Layer, but the actual reasons behind each flag were never rendered
+// anywhere. Real data (permit_id, type, zone, flag severity, reasons),
+// no aggregation.
+function PermitIntelligencePanel({ permitFlags }: { permitFlags: PermitFlag[] }) {
+  return (
+    <div style={{
+      background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
+      border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)',
+      padding: 24, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflowY: 'auto', maxWidth: 480, width: '100%',
+    }}>
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.amber, marginBottom: 2 }}>DIGITAL PERMIT INTELLIGENCE</p>
+        <h3 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: C.textDark }}>Flagged Permits</h3>
+      </div>
+      {permitFlags.length === 0 ? (
+        <p style={{ fontSize: 12, color: C.textMuted }}>No active permit is currently flagged — every issued permit's conditions still match live plant state.</p>
+      ) : (
+        permitFlags.map((f) => (
+          <div key={f.permit_id} style={{
+            padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.7)',
+            border: `1px solid ${f.flag === 'block_recommend' ? 'rgba(239,68,68,0.2)' : 'rgba(251,146,60,0.2)'}`,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.textDark }}>Zone {f.zone_id} · {f.permit_type_id.replace(/_/g, ' ')}</span>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.05em',
+                color: f.flag === 'block_recommend' ? '#b91c1c' : '#c2410c',
+                background: f.flag === 'block_recommend' ? 'rgba(239,68,68,0.1)' : 'rgba(251,146,60,0.1)',
+              }}>{f.flag === 'block_recommend' ? 'Block' : 'Flag'}</span>
+            </div>
+            {f.reasons.map((r, i) => (
+              <p key={i} style={{ fontSize: 11, color: C.textMid, marginTop: 3 }}>• {r}</p>
+            ))}
+            <p style={{ fontSize: 9, color: C.textMuted, marginTop: 6 }}>Checked {formatEventTime(f.checked_at)}</p>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+function AIIntelligence({ selectedZoneId, latestEventByZone, zones, onSelectZone, riskEvents }: { selectedZoneId: string | null; latestEventByZone: Record<string, LiveRiskEvent>; zones: LiveZone[]; onSelectZone: (id: string) => void; riskEvents: LiveRiskEvent[] }) {
   const event = selectedZoneId ? latestEventByZone[selectedZoneId] : null
   const isActive = !!event && event.tier !== 'normal'
   const evidence = isActive ? event!.evidence : null
@@ -926,6 +1110,7 @@ function AIIntelligence({ selectedZoneId, latestEventByZone, zones, onSelectZone
             {selectedZoneId ? `Zone ${selectedZoneId} nominal — no active risk event.` : 'Pick a zone above, hover it on the twin, or wait for a live event.'}
           </span>
         </div>
+        <RecentEventsStrip riskEvents={riskEvents} zoneFilter={selectedZoneId} />
       </div>
     )
   }
@@ -937,6 +1122,11 @@ function AIIntelligence({ selectedZoneId, latestEventByZone, zones, onSelectZone
     ...(evidence.matched_incident_confidence ? [`Precedent: ${evidence.matched_incident_confidence} confidence`] : []),
     ...(evidence.regulatory_citation ? [evidence.regulatory_citation] : []),
   ]
+  // evidence.matched_incident_summary was sent by the backend on every
+  // Warning/Critical event but never rendered anywhere in the UI — the
+  // confidence *band* showed as a tag above, but not which incident it
+  // actually matched.
+  const hasMatchedIncident = !!evidence.matched_incident_summary
 
   return (
     <div style={{
@@ -983,6 +1173,12 @@ function AIIntelligence({ selectedZoneId, latestEventByZone, zones, onSelectZone
               <span key={t} style={{ fontSize: 11, fontWeight: 600, background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderRadius: 20, padding: '3px 9px' }}>{t}</span>
             ))}
           </div>
+          {hasMatchedIncident && (
+            <p style={{ fontSize: 12, lineHeight: 1.5, color: C.textDark, background: 'rgba(255,255,255,0.55)', borderRadius: 12, padding: '9px 12px', marginBottom: 12 }}>
+              <span style={{ fontWeight: 700, color: '#b91c1c' }}>Matched precedent: </span>
+              {evidence.matched_incident_summary}
+            </p>
+          )}
           {showReasoning && evidence.reasoning && (
             <p style={{ fontSize: 12, lineHeight: 1.6, color: C.textMid, background: 'rgba(255,255,255,0.6)', borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
               {evidence.reasoning}
@@ -1043,17 +1239,31 @@ function AIIntelligence({ selectedZoneId, latestEventByZone, zones, onSelectZone
           </div>
         </div>
       )}
+
+      <RecentEventsStrip riskEvents={riskEvents} zoneFilter={selectedZoneId} />
     </div>
   )
 }
 
-function Copilot({ selectedZoneId, sendCopilotMessage }: { selectedZoneId: string | null; sendCopilotMessage: (message: string, zoneId: string | null) => Promise<string> }) {
+function Copilot({ selectedZoneId, sendCopilotMessage, zones, onSelectZone }: { selectedZoneId: string | null; sendCopilotMessage: (message: string, zoneId: string | null) => Promise<string>; zones: LiveZone[]; onSelectZone: (id: string) => void }) {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', text: 'Safety Copilot ready. Ask about any zone, permit, or historical pattern — I answer from live backend data.' },
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Suggestions were a fixed 'Zone D' reference regardless of context — the
+  // backend answers using whichever zone_id is actually passed, so a stale
+  // hardcoded zone in the suggestion button was misleading once a different
+  // zone was selected. Zone D stays as the fallback wording only when
+  // nothing is selected yet.
+  const suggestions = [
+    `Why is Zone ${selectedZoneId ?? 'D'} high risk?`,
+    'Explain AI decision',
+    'Show similar incidents',
+    "Summarize today's events",
+  ]
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, typing])
 
@@ -1080,11 +1290,15 @@ function Copilot({ selectedZoneId, sendCopilotMessage }: { selectedZoneId: strin
     }}>
       <div style={{ padding: '16px 18px 10px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.amber, marginBottom: 2 }}>AI COPILOT</p>
-        <h3 style={{ fontSize: 15, fontWeight: 800, color: C.textDark, letterSpacing: '-0.02em' }}>Ask anything</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 800, color: C.textDark, letterSpacing: '-0.02em', marginBottom: 10 }}>Ask anything</h3>
+        <ZonePicker zones={zones} selectedZoneId={selectedZoneId} onSelectZone={onSelectZone} />
+        <p style={{ fontSize: 10, color: C.textMuted, marginTop: 6 }}>
+          {selectedZoneId ? `Answers will be scoped to Zone ${selectedZoneId} where relevant.` : 'No zone selected — pick one above for zone-specific answers.'}
+        </p>
       </div>
 
       <div style={{ padding: '10px 12px 0', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-        {COPILOT_SUGGESTIONS.map((s) => (
+        {suggestions.map((s) => (
           <button key={s} onClick={() => send(s)} style={{
             fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 20,
             border: `1px solid ${C.amberBorder}`, background: C.amberBg, color: C.amberDark,
@@ -1229,7 +1443,10 @@ function Dashboard({ onExit }: { onExit: () => void }) {
                   fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 8, border: 'none',
                   background: moreOpen || isMoreView ? C.amberBg : 'transparent',
                   color: moreOpen || isMoreView ? C.amberDark : C.textMid, cursor: 'pointer', transition: 'all 0.2s',
-                }}>More ▾</button>
+                }}
+                  onMouseEnter={(e) => { if (!moreOpen && !isMoreView) e.currentTarget.style.background = 'rgba(0,0,0,0.04)' }}
+                  onMouseLeave={(e) => { if (!moreOpen && !isMoreView) e.currentTarget.style.background = 'transparent' }}
+                >More ▾</button>
                 {moreOpen && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, marginTop: 6,
@@ -1351,15 +1568,15 @@ function Dashboard({ onExit }: { onExit: () => void }) {
       {activeTab === 'Overview' && (
         <>
           {/* ── MAIN 3-COLUMN GRID ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '46fr 30fr 24fr', gap: 16, padding: '16px 24px', minHeight: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '46fr 30fr 24fr', gap: 16, padding: '16px 24px', minHeight: 0, animation: 'slide-in 0.25s ease' }}>
             <div style={{ minHeight: 560, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <DigitalTwin zones={liveZones} worstActiveEvent={facility.worstActiveEvent} onZoneSelect={(z) => setSelectedZoneId(z?.id ?? null)} />
             </div>
             <div style={{ minHeight: 560, maxHeight: 660, overflowY: 'auto' }}>
-              <AIIntelligence selectedZoneId={selectedZoneId} latestEventByZone={facility.latestEventByZone} zones={liveZones} onSelectZone={setSelectedZoneId} />
+              <AIIntelligence selectedZoneId={selectedZoneId} latestEventByZone={facility.latestEventByZone} zones={liveZones} onSelectZone={setSelectedZoneId} riskEvents={facility.riskEvents} />
             </div>
             <div style={{ height: 660 }}>
-              <Copilot selectedZoneId={selectedZoneId} sendCopilotMessage={facility.sendCopilotMessage} />
+              <Copilot selectedZoneId={selectedZoneId} sendCopilotMessage={facility.sendCopilotMessage} zones={liveZones} onSelectZone={setSelectedZoneId} />
             </div>
           </div>
 
@@ -1432,25 +1649,35 @@ function Dashboard({ onExit }: { onExit: () => void }) {
       )}
 
       {activeTab === 'Digital Twin' && (
-        <div style={{ padding: '16px 24px 32px', height: 640 }}>
+        <div style={{ padding: '16px 24px 32px', height: 640, animation: 'slide-in 0.25s ease' }}>
           <DigitalTwin zones={liveZones} worstActiveEvent={facility.worstActiveEvent} onZoneSelect={(z) => setSelectedZoneId(z?.id ?? null)} />
         </div>
       )}
 
       {activeTab === 'AI Intelligence' && (
-        <div style={{ padding: '16px 24px 32px', maxWidth: 640, height: 640 }}>
-          <AIIntelligence selectedZoneId={selectedZoneId} latestEventByZone={facility.latestEventByZone} zones={liveZones} onSelectZone={setSelectedZoneId} />
+        <div style={{ padding: '16px 24px 32px', display: 'flex', gap: 16, height: 640, animation: 'slide-in 0.25s ease' }}>
+          <div style={{ maxWidth: 640, width: '100%', height: '100%' }}>
+            <AIIntelligence selectedZoneId={selectedZoneId} latestEventByZone={facility.latestEventByZone} zones={liveZones} onSelectZone={setSelectedZoneId} riskEvents={facility.riskEvents} />
+          </div>
+          <div style={{ flex: 1, height: '100%', minWidth: 280 }}>
+            <ReasoningHistory riskEvents={facility.riskEvents} />
+          </div>
         </div>
       )}
 
       {activeTab === 'Copilot' && (
-        <div style={{ padding: '16px 24px 32px', maxWidth: 480, height: 640 }}>
-          <Copilot selectedZoneId={selectedZoneId} sendCopilotMessage={facility.sendCopilotMessage} />
+        <div style={{ padding: '16px 24px 32px', display: 'flex', gap: 16, height: 640, animation: 'slide-in 0.25s ease' }}>
+          <div style={{ maxWidth: 480, width: '100%', height: '100%' }}>
+            <Copilot selectedZoneId={selectedZoneId} sendCopilotMessage={facility.sendCopilotMessage} zones={liveZones} onSelectZone={setSelectedZoneId} />
+          </div>
+          <div style={{ flex: 1, height: '100%', minWidth: 280 }}>
+            <EmergencyResponsePanel emergencyResponses={facility.emergencyResponses} />
+          </div>
         </div>
       )}
 
       {activeTab === 'Replay' && (
-        <div style={{ padding: '16px 24px 32px' }}>
+        <div style={{ padding: '16px 24px 32px', animation: 'slide-in 0.25s ease' }}>
           <div style={{
             background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
             border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)',
@@ -1503,7 +1730,7 @@ function Dashboard({ onExit }: { onExit: () => void }) {
       )}
 
       {activeTab === 'Historical Incidents' && (
-        <div style={{ padding: '16px 24px 32px' }}>
+        <div style={{ padding: '16px 24px 32px', animation: 'slide-in 0.25s ease' }}>
           <div style={{
             background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
             border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24,
@@ -1527,10 +1754,10 @@ function Dashboard({ onExit }: { onExit: () => void }) {
       )}
 
       {activeTab === 'Compliance' && (
-        <div style={{ padding: '16px 24px 32px' }}>
+        <div style={{ padding: '16px 24px 32px', display: 'flex', gap: 16, animation: 'slide-in 0.25s ease' }}>
           <div style={{
             background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
-            border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 720,
+            border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 720, width: '100%',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
@@ -1559,11 +1786,12 @@ function Dashboard({ onExit }: { onExit: () => void }) {
               </>
             )}
           </div>
+          <PermitIntelligencePanel permitFlags={facility.permitFlags} />
         </div>
       )}
 
       {activeTab === 'Reports' && (
-        <div style={{ padding: '16px 24px 32px' }}>
+        <div style={{ padding: '16px 24px 32px', animation: 'slide-in 0.25s ease' }}>
           <div style={{
             background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
             border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 720,
@@ -1622,7 +1850,7 @@ function Dashboard({ onExit }: { onExit: () => void }) {
       )}
 
       {(activeTab === 'Analytics' || activeTab === 'Settings') && (
-        <div style={{ padding: '16px 24px 32px' }}>
+        <div style={{ padding: '16px 24px 32px', animation: 'slide-in 0.25s ease' }}>
           <div style={{
             background: C.cardBg, backdropFilter: 'blur(20px)', borderRadius: 24,
             border: `1px solid ${C.amberBorder}`, boxShadow: '0 4px 40px rgba(245,158,11,0.06)', padding: 24, maxWidth: 480, textAlign: 'center',

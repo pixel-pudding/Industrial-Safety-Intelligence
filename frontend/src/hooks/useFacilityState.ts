@@ -81,6 +81,13 @@ export function useFacilityState() {
     setLatestEventByZone({});
     setEmergencyResponses([]);
     await api.runScenario(scenarioId, speed);
+    // run_scenario() resets to baseline server-side before queuing the new
+    // scenario's steps — without this fetch, the previous scenario's
+    // heatmap (e.g. a zone still shown critical) stays on screen for up to
+    // TICK_INTERVAL (2s) until the next WS tick happens to arrive.
+    const [hm, pf] = await Promise.all([api.fetchHeatmap(), api.fetchPermitFlags()]);
+    setHeatmap(hm);
+    setPermitFlags(pf);
   }, []);
 
   const reset = useCallback(async () => {

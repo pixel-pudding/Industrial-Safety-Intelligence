@@ -6,6 +6,7 @@ will wire scenarioService.js / copilotService.js against.
 
 import asyncio
 import datetime as dt
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -285,6 +286,84 @@ def reports_summary():
                 {"zone_id": z.zone_id, "zone_name": z.zone_name, "risk_tier": z.risk_tier, "risk_score": z.risk_score}
                 for z in elevated_zones
             ],
+        }
+    finally:
+        session.close()
+
+
+@app.get("/api/analytics/summary")
+def analytics_summary():
+    """Pattern/frequency analysis across ALL persisted risk events and
+    compliance audits — distinct from /api/reports/summary, which is a
+    current-state snapshot (latest item, currently elevated zones). This is
+    aggregation only: signal categories and agents are counted straight off
+    the persisted contributing_signals/triggered_agents JSON columns, no
+    estimation. Note: per-event confidence/reasoning (`evidence`) is never
+    persisted (see RiskEvent.to_orm_kwargs) — the WS tick is the only place
+    that ever exists, so no confidence-trend analytics can be derived here."""
+    session = SessionLocal()
+    try:
+        events = session.query(RiskEventModel).order_by(RiskEventModel.id.desc()).limit(1000).all()
+
+        signal_category_frequency: dict[str, int] = {}
+        agent_trigger_frequency: dict[str, int] = {}
+        zone_frequency: dict[str, int] = {}
+        for e in events:
+            zone_frequency[e.zone_id] = zone_frequency.get(e.zone_id, 0) + 1
+            for s in e.contributing_signals or []:
+                cat = s.get("category")
+                if cat:
+                    signal_category_frequency[cat] = signal_category_frequency.get(cat, 0) + 1
+            for a in e.triggered_agents or []:
+                agent_trigger_frequency[a] = agent_trigger_frequency.get(a, 0) + 1
+
+        audits = session.query(ComplianceAuditModel).all()
+        gap_category_frequency: dict[str, int] = {}
+        for audit in audits:
+            for g in audit.gaps or []:
+                cat = g.get("category")
+                if cat:
+                    gap_category_frequency[cat] = gap_category_frequency.get(cat, 0) + 1
+
+        top_zones = sorted(zone_frequency.items(), key=lambda kv: kv[1], reverse=True)
+
+        return {
+            "total_risk_events_analyzed": len(events),
+            "signal_category_frequency": signal_category_frequency,
+            "agent_trigger_frequency": agent_trigger_frequency,
+            "zone_frequency": zone_frequency,
+            "top_zones": [{"zone_id": z, "count": c} for z, c in top_zones[:5]],
+            "compliance_audits_run": len(audits),
+            "compliance_gap_category_frequency": gap_category_frequency,
+        }
+    finally:
+        session.close()
+
+
+@app.get("/api/system/status")
+def system_status():
+    """Honest read-only system diagnostics — not fabricated settings toggles.
+    This platform has no user accounts/preferences to persist, so 'Settings'
+    is real configuration/status info: is the LLM reasoning path actually
+    configured, what's the tick cadence, what's currently loaded. Reports
+    whether a Groq API key is *present*, not whether the last call
+    succeeded — main.py doesn't track per-call outcomes, so claiming
+    "working" would be a guess; evidence.llm_backed on individual events is
+    the honest per-event signal for that."""
+    session = SessionLocal()
+    try:
+        return {
+            "llm_provider": "groq",
+            "llm_model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            "llm_api_key_configured": bool(os.getenv("GROQ_API_KEY", "").strip()),
+            "tick_interval_seconds": TICK_INTERVAL,
+            "zone_count": session.query(Zone).count(),
+            "scenario_count": len(TickEngine.list_scenarios()),
+            "historical_incident_count": session.query(HistoricalIncident).count(),
+            "sim_time": engine.sim_time,
+            "scenario_running": engine.scenario_running,
+            "active_scenario_id": engine.active_scenario_id,
+            "connected_ws_clients": len(manager.active_connections),
         }
     finally:
         session.close()

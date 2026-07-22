@@ -200,15 +200,21 @@ class TickEngine:
                 note = self._execute_step(self.scenario_queue.pop(0), session)
                 if note:
                     executed_notes.append(note)
-            if self.scenario_running and not self.scenario_queue and not self.active_ramps:
-                self.scenario_running = False
 
+            # Must run before the scenario_running check below — a ramp that
+            # reaches its target on THIS tick was previously still counted as
+            # "active" (only deleted after the check ran), leaving
+            # scenario_running stuck True for one extra tick past the point
+            # the UI's own sensor values already showed the scenario finished.
             for tag_name, ramp in list(self.active_ramps.items()):
                 progress = min(1.0, (self.sim_time - ramp["start_t"]) / max(ramp["duration"], 0.001))
                 value = ramp["start_value"] + (ramp["target_value"] - ramp["start_value"]) * progress
                 self.values[tag_name] = round(value, 2)
                 if progress >= 1.0:
                     del self.active_ramps[tag_name]
+
+            if self.scenario_running and not self.scenario_queue and not self.active_ramps:
+                self.scenario_running = False
 
             for tag_name, tag in self.tags.items():
                 if tag_name in self.active_ramps or tag_name in self.held_tags:
