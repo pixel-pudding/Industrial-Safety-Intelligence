@@ -20,7 +20,7 @@ Six independently-testable AI agents, all built (not a narrowed subset of the pr
 | **Geospatial Safety Heatmap** | Live zone-by-zone risk visualization |
 | **Quality & Compliance Audit Agent** | Continuous compliance gap detection vs. OISD/Factory Act |
 
-See [`docs/SPSCL_Detailed_Report.pdf`](docs/SPSCL_Detailed_Report.pdf) for the full architecture, design rationale, and judging-criteria alignment.
+See [`docs/SPSCL_Detailed_Report.pdf`](docs/Detailed_Report.pdf) for the full architecture, design rationale, and judging-criteria alignment.
 
 ## Architecture
 
