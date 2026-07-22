@@ -20,7 +20,7 @@ Six independently-testable AI agents, all built (not a narrowed subset of the pr
 | **Geospatial Safety Heatmap** | Live zone-by-zone risk visualization |
 | **Quality & Compliance Audit Agent** | Continuous compliance gap detection vs. OISD/Factory Act |
 
-See [`docs/SPSCL_Detailed_Report.pdf`](docs/Detailed_Report.pdf) for the full architecture, design rationale, and judging-criteria alignment.
+See [`docs/Detailed_Report.pdf`](docs/Detailed_Report.pdf) for the full architecture, design rationale, and judging-criteria alignment.
 
 ## Architecture
 
@@ -58,7 +58,7 @@ cd Industrial-Safety-Intelligence
 cd backend
 python -m venv venv && source venv/bin/activate   # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
-cp .env.example .env   # add GEMINI_API_KEY if you have one — the system works without it
+cp .env.example .env   # add GROQ_API_KEY if you have one — the system works without it
 python -m seed.seed_reference
 python -m seed.seed_incidents
 python -m rag.ingest_incidents
