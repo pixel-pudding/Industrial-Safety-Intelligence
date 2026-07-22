@@ -4,15 +4,23 @@ backend/__pycache__/
 backend/*.pyc
 backend/.env
 backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
 backend/rag/chroma_store/
+backend/*.egg-info/
 
 # React
 frontend/node_modules/
-frontend/env/
+frontend/.env
 frontend/dist/
+frontend/dist-ssr/
 
 # VS Code
 .vscode/
 
 # Logs
 *.log
+
+# OS
+.DS_Store
+Thumbs.db
